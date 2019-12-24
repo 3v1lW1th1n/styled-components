@@ -2,7 +2,7 @@
 import React, { useContext, useMemo, useState, type Node, type Context } from 'react';
 import shallowequal from 'shallowequal';
 import StyleSheet from '../sheet';
-import createStylisInstance from '../utils/stylis';
+import createStylisInstance, { type Stringifier } from '../utils/stylis';
 
 type Props = {
   children?: Node,
@@ -15,13 +15,23 @@ type Props = {
 
 export const StyleSheetContext: Context<StyleSheet | void> = React.createContext();
 export const StyleSheetConsumer = StyleSheetContext.Consumer;
+export const StylisContext: Context<Stringifier | void> = React.createContext();
+export const StylisConsumer = StylisContext.Consumer;
+
 export const masterSheet: StyleSheet = new StyleSheet();
+export const masterStylis: Stringifier = createStylisInstance();
 
 export function useStyleSheet(): StyleSheet {
   return useContext(StyleSheetContext) || masterSheet;
 }
 
+export function useStylis(): Stringifier {
+  return useContext(StylisContext) || masterStylis;
+}
+
 export default function StyleSheetManager(props: Props) {
+  const contextStyleSheet = useStyleSheet();
+
   /**
    * freeze the stylis modification props on initial mount since they rely on
    * reference equality for the useMemo dependencies array and devs will
@@ -49,7 +59,7 @@ export default function StyleSheetManager(props: Props) {
   }
 
   const styleSheet = useMemo(() => {
-    let sheet = masterSheet;
+    let sheet = contextStyleSheet;
 
     if (props.sheet) {
       // eslint-disable-next-line prefer-destructuring
@@ -62,27 +72,25 @@ export default function StyleSheetManager(props: Props) {
       sheet = sheet.reconstructWithOptions({ useCSSOMInjection: false });
     }
 
-    if (disableVendorPrefixes || stylisPlugins) {
-      sheet = sheet.reconstructWithOptions({
-        stringifier: createStylisInstance({
-          options: { prefix: !disableVendorPrefixes },
-          plugins: stylisPlugins,
-        }),
-      });
-    }
-
     return sheet;
-  }, [
-    props.disableCSSOMInjection,
-    props.sheet,
-    disableVendorPrefixes,
-    stylisPlugins,
-    props.target,
-  ]);
+  }, [props.disableCSSOMInjection, props.sheet, props.target]);
+
+  const stylis = useMemo(
+    () =>
+      createStylisInstance({
+        options: { prefix: !disableVendorPrefixes },
+        plugins: stylisPlugins,
+      }),
+    [disableVendorPrefixes, stylisPlugins]
+  );
 
   return (
     <StyleSheetContext.Provider value={styleSheet}>
-      {process.env.NODE_ENV !== 'production' ? React.Children.only(props.children) : props.children}
+      <StylisContext.Provider value={stylis}>
+        {process.env.NODE_ENV !== 'production'
+          ? React.Children.only(props.children)
+          : props.children}
+      </StylisContext.Provider>
     </StyleSheetContext.Provider>
   );
 }

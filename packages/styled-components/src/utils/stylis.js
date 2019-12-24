@@ -1,15 +1,9 @@
 import Stylis from '@emotion/stylis';
 import _insertRulePlugin from 'stylis-rule-sheet';
+import { type Stringifier } from '../types';
 import { EMPTY_ARRAY, EMPTY_OBJECT } from './empties';
 
 const COMMENT_REGEX = /^\s*\/\/.*$/gm;
-
-export type Stringifier = (
-  css: string,
-  selector: string,
-  prefix: ?string,
-  componentId: string
-) => Array<string>;
 
 type StylisInstanceConstructorArgs = {
   options?: Object,
